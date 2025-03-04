@@ -1,6 +1,7 @@
 // src/stores/useCoinCapStore.ts
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import axios from 'axios';
 
 export interface Asset {
   id: string;
@@ -24,19 +25,38 @@ export interface AssetHistory {
 }
 
 const BASE_URL = 'https://api.coincap.io/v2';
+const RATE_LIMIT_STATUS = 429;
 
 export const useCoinCapStore = defineStore('coinCap', () => {
   const assets = ref<Asset[]>([]);
-  const asset = ref<Asset | null>(null);
+  const asset = ref<{ [key: string]: Asset }>({});
   const history = ref<AssetHistory[]>([]);
   const loading = ref(false);
+  const lastFetched = ref<{ [key: string]: number }>({});
 
-  const fetchAssets = async (limit: number = 20) => {
+  const fetchWithCache = async (url: string, cacheKey: string, expiry: number) => {
+    if (lastFetched.value[cacheKey] && Date.now() - lastFetched.value[cacheKey] < expiry) {
+      return null;
+    }
+
+    try {
+      const response = await axios.get(url);
+      if (response.status === RATE_LIMIT_STATUS) {
+        throw new Error('Rate limit exceeded');
+      }
+      lastFetched.value[cacheKey] = Date.now();
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      throw error;
+    }
+  };
+
+  const fetchAssets = async (limit: number = 100) => {
     loading.value = true;
     try {
-      const response = await fetch(`${BASE_URL}/assets?limit=${limit}`);
-      const data = await response.json();
-      assets.value = data.data;
+      const data = await fetchWithCache(`${BASE_URL}/assets?limit=${limit}`, 'assets', 1_800_000); // 30 minute expiry
+      if (data) assets.value = data.data;
     } catch (error) {
       console.error('Error fetching assets:', error);
     } finally {
@@ -47,9 +67,8 @@ export const useCoinCapStore = defineStore('coinCap', () => {
   const fetchAssetById = async (id: string) => {
     loading.value = true;
     try {
-      const response = await fetch(`${BASE_URL}/assets/${id}`);
-      const data = await response.json();
-      asset.value = data.data;
+      const data = await fetchWithCache(`${BASE_URL}/assets/${id}`, `asset_${id}`, 600_000); // 10 minute expiry
+      if (data) asset.value[id] = data.data;
     } catch (error) {
       console.error(`Error fetching asset ${id}:`, error);
     } finally {
@@ -60,9 +79,8 @@ export const useCoinCapStore = defineStore('coinCap', () => {
   const fetchAssetHistory = async (id: string, interval: string = 'd1') => {
     loading.value = true;
     try {
-      const response = await fetch(`${BASE_URL}/assets/${id}/history?interval=${interval}`);
-      const data = await response.json();
-      history.value = data.data;
+      const data = await fetchWithCache(`${BASE_URL}/assets/${id}/history?interval=${interval}`, `history_${id}_${interval}`, 3_600_000); // 1 hour expiry
+      if (data) history.value = data.data;
     } catch (error) {
       console.error(`Error fetching history for asset ${id}:`, error);
     } finally {

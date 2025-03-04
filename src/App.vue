@@ -7,7 +7,6 @@
       <router-link to="/about" class="nav-link" :class="{ active: $route.path === '/about' }">About</router-link>
     </v-app-bar>
     <v-main class="main-container">
-        <button class="neo-btn">Primary</button>
         <router-view></router-view>
     </v-main>
   </v-app>
