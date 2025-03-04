@@ -30,7 +30,7 @@ const RATE_LIMIT_STATUS = 429;
 export const useCoinCapStore = defineStore('coinCap', () => {
   const assets = ref<Asset[]>([]);
   const asset = ref<{ [key: string]: Asset }>({});
-  const history = ref<AssetHistory[]>([]);
+  const history = ref<{ [key: string]: { [interval: string]: AssetHistory[] } }>({});
   const loading = ref(false);
   const lastFetched = ref<{ [key: string]: number }>({});
 
@@ -80,7 +80,10 @@ export const useCoinCapStore = defineStore('coinCap', () => {
     loading.value = true;
     try {
       const data = await fetchWithCache(`${BASE_URL}/assets/${id}/history?interval=${interval}`, `history_${id}_${interval}`, 3_600_000); // 1 hour expiry
-      if (data) history.value = data.data;
+      if (data) {
+        if (!history.value[id]) history.value[id] = {};
+        history.value[id][interval] = data.data;
+      }
     } catch (error) {
       console.error(`Error fetching history for asset ${id}:`, error);
     } finally {

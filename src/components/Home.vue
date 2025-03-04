@@ -2,21 +2,27 @@
 import { onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCoinCapStore } from '../stores/coinCapApi';
+import { useRouter } from 'vue-router';
 
 const coinCapStore = useCoinCapStore();
 const { assets } = storeToRefs(coinCapStore);
 const { fetchAssets, formatCurrency, formatPercentage } = coinCapStore;
+const router = useRouter();
 
 onMounted(() => {
   fetchAssets();
 });
+
+const goToAsset = (id) => {
+  router.push(`/asset/${id}`);
+};
 </script>
 
 <template>
   <v-container>
     <v-row>
       <v-col cols="12" md="6" lg="4" v-for="(asset, index) in assets" :key="asset.id">
-        <v-card class="asset-card">
+        <v-card class="asset-card" @click="goToAsset(asset.id)">
           <v-card-title>
             <v-avatar class="rank-avatar">{{ index + 1 }}</v-avatar>
             <div class="v-row mt-2">
@@ -52,6 +58,7 @@ onMounted(() => {
   border: 2px solid #000;
   box-shadow: 8px 8px 0 #000;
   margin-bottom: 1rem;
+  cursor: pointer;
 }
 
 .asset-card:hover {
