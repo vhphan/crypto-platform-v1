@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCoinCapStore } from '../stores/coinCapApi';
 import { useRouter } from 'vue-router';
@@ -8,6 +8,7 @@ const coinCapStore = useCoinCapStore();
 const { assets } = storeToRefs(coinCapStore);
 const { fetchAssets, formatCurrency, formatPercentage } = coinCapStore;
 const router = useRouter();
+const search = ref('');
 
 onMounted(() => {
   fetchAssets();
@@ -16,12 +17,25 @@ onMounted(() => {
 const goToAsset = (id) => {
   router.push(`/asset/${id}`);
 };
+
+const filteredAssets = computed(() => {
+  return assets.value.filter((asset) =>
+    asset.name.toLowerCase().includes(search.value.toLowerCase()) ||
+    asset.symbol.toLowerCase().includes(search.value.toLowerCase())
+  );
+});
 </script>
 
 <template>
   <v-container>
+    <v-text-field
+      v-model="search"
+      label="Search for an asset"
+      prepend-icon="mdi-magnify"
+      class="mb-4"
+    ></v-text-field>
     <v-row>
-      <v-col cols="12" md="6" lg="4" v-for="(asset, index) in assets" :key="asset.id">
+      <v-col cols="12" md="6" lg="4" v-for="(asset, index) in filteredAssets" :key="asset.id">
         <v-card class="asset-card" @click="goToAsset(asset.id)">
           <v-card-title>
             <v-avatar class="rank-avatar">{{ index + 1 }}</v-avatar>
