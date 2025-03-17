@@ -1,16 +1,16 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useCoinCapStore } from '../stores/coinCapStore.ts';
 import { useRouter } from 'vue-router';
+import { useCoinCGeckoStore } from "@/stores/coiGeckoStore.js";
+import { formatCurrency, formatPercentage } from "../stores/helpers.js";
 
-const coinCapStore = useCoinCapStore();
-const {assets} = storeToRefs(coinCapStore);
-const {fetchAssets, formatCurrency, formatPercentage} = coinCapStore;
+const coinGeckoStore = useCoinCGeckoStore();
+const {cryptocurrencies: assets} = storeToRefs(coinGeckoStore);
 const router = useRouter();
 const search = ref('');
 
-onMounted(fetchAssets);
+onMounted(coinGeckoStore.fetchCryptoData);
 
 const goToAsset = (id) => {
   router.push(`/asset/${id}`);
@@ -45,10 +45,10 @@ const filteredAssets = computed(() => {
               </div>
 
               <div class="asset-price col-6">
-                {{ formatCurrency(asset.priceUsd) }}
+                {{ formatCurrency(asset.current_price) }}
                 <div
-                    :class="{ 'positive-change': asset.changePercent24Hr > 0, 'negative-change': asset.changePercent24Hr < 0 }">
-                  {{ formatPercentage(asset.changePercent24Hr) }}
+                    :class="{ 'positive-change': asset.price_change_percentage_24h > 0, 'negative-change': asset.price_change_percentage_24h < 0 }">
+                  {{ formatPercentage(asset.price_change_percentage_24h) }}
                 </div>
               </div>
 
@@ -56,8 +56,8 @@ const filteredAssets = computed(() => {
           </v-card-title>
           <v-divider class="ma-2" color="black" thickness="1px" opacity="1"></v-divider>
           <v-card-text>
-            <div>Market Cap: {{ formatCurrency(asset.marketCapUsd) }}</div>
-            <div>Volume (24h): {{ formatCurrency(asset.volumeUsd24Hr) }}</div>
+            <div>Market Cap: {{ formatCurrency(asset.market_cap) }}</div>
+            <div>Volume (24h): {{ formatCurrency(asset.total_volume) }}</div>
           </v-card-text>
         </v-card>
       </v-col>
