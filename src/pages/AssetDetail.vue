@@ -1,32 +1,32 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { timeOptions, useCoinCapStore } from '@/stores/coinCapStore.ts';
 // import LineChart from '../components/LineChart.vue';
 import LineChartApex from "@/components/LineChartApex.vue";
 import { storeToRefs } from "pinia";
+import { useCoinGeckoStore, timeOptions } from "@/stores/coinGeckoStore.ts";
+import { formatCurrency, formatPercentage } from "@/utils/formatters.ts";
 
 
-const coinCapStore = useCoinCapStore();
-const {fetchAssetById, fetchAssetHistory, formatCurrency, formatPercentage} = coinCapStore;
-const {timeOption} = storeToRefs(coinCapStore);
+const coinGeckoStore = useCoinGeckoStore();
+const { fetchHistoricalData } = coinGeckoStore;
+const { timeOption } = storeToRefs(coinGeckoStore);
 const route = useRoute();
 const router = useRouter();
 const id = route.params.id;
 const loading = ref(true);
 
 
-const asset = computed(() => coinCapStore.assets.find((asset) => asset.id === id) || {});
-const history = computed(() => coinCapStore.history[id]?.[timeOption.value] || []);
+const asset = computed(() => coinGeckoStore.cryptocurrencies.find((asset) => asset.id === id) || {});
+const history = computed(() => coinGeckoStore.historicalData[id]?.[timeOption.value] || []);
 
 
 
 const loadAssetData = async () => {
   try {
     loading.value = true;
-    await fetchAssetById(id);
-    if (asset.value) {
-      await fetchAssetHistory(id, timeOption.value);
+    if (asset.value && timeOption.value) {
+      await fetchHistoricalData(id, timeOption.value);
     }
   } catch (error) {
     console.error('Failed to fetch asset details:', error);
@@ -38,24 +38,25 @@ const loadAssetData = async () => {
 onMounted(loadAssetData);
 
 onMounted(() => {
-//   if asset is an empty object, redirect to home page
+  //   if asset is an empty object, redirect to home page
   if (Object.keys(asset.value).length === 0) {
     router.push('/');
   }
-
-
-})
+});
 
 
 watch([() => route.params.id, () => timeOption.value], loadAssetData);
 
-const chartData = computed(() =>
-    history.value.map((point) => ({
-      // time: new Date(point.time).toLocaleString(),
-      time: new Date(point.time),
-      price: parseFloat(point.priceUsd),
-    }))
-);
+const chartData = computed(() => {
+
+  const pricesData = history.value['prices'];
+  if (!pricesData) return [];
+  return pricesData.map((point) => ({
+    time: new Date(point[0]),
+    price: parseFloat(point[1]),
+  }));
+
+});
 
 const chartColor = computed(() => (asset.value && parseFloat(asset.value.changePercent24Hr) >= 0 ? '#00CC66' : '#FF3366'));
 </script>
@@ -70,7 +71,7 @@ const chartColor = computed(() => (asset.value && parseFloat(asset.value.changeP
             <v-row>
 
               <v-col cols="1">
-                <v-avatar :rounded="false" class="rank-avatar">{{ asset.rank }}</v-avatar>
+                <v-avatar :rounded="false" class="rank-avatar">{{ asset.market_cap_rank }}</v-avatar>
               </v-col>
 
               <v-col cols="5">
@@ -79,16 +80,16 @@ const chartColor = computed(() => (asset.value && parseFloat(asset.value.changeP
               </v-col>
 
               <v-col cols="6">
-                <div class="asset-price">{{ formatCurrency(asset.priceUsd) }}</div>
+                <div class="asset-price">{{ formatCurrency(asset.current_price) }}</div>
                 <div class="asset-price-change"
-                     :class="{ 'positive-change': asset.changePercent24Hr > 0, 'negative-change': asset.changePercent24Hr < 0 }">
-                  {{ formatPercentage(asset.changePercent24Hr) }}
+                  :class="{ 'positive-change': asset.market_cap_change_percentage_24h > 0, 'negative-change': asset.market_cap_change_percentage_24h < 0 }">
+                  {{ formatPercentage(asset.market_cap_change_percentage_24h) }}
                 </div>
               </v-col>
 
             </v-row>
 
-            <v-divider style="border-width: 1px; opacity: 0.3;"/>
+            <v-divider style="border-width: 1px; opacity: 0.3;" />
 
           </v-card-title>
 
@@ -102,25 +103,25 @@ const chartColor = computed(() => (asset.value && parseFloat(asset.value.changeP
               <v-col cols="6">
                 <div class="asset-info-box">
                   <div class="asset-info-title">Market Cap</div>
-                  <div class="asset-info-value">{{ formatCurrency(asset.marketCapUsd) }}</div>
+                  <div class="asset-info-value">{{ formatCurrency(asset.market_cap) }}</div>
                 </div>
               </v-col>
               <v-col cols="6">
                 <div class="asset-info-box">
                   <div class="asset-info-title">Volume (24h)</div>
-                  <div class="asset-info-value">{{ formatCurrency(asset.volumeUsd24Hr) }}</div>
+                  <div class="asset-info-value">{{ formatCurrency(asset.total_volume) }}</div>
                 </div>
               </v-col>
               <v-col cols="6">
                 <div class="asset-info-box">
                   <div class="asset-info-title">Supply</div>
-                  <div class="asset-info-value">{{ asset.supply }} {{ asset.symbol }}</div>
+                  <div class="asset-info-value">{{ asset.total_supply }} {{ asset.symbol }}</div>
                 </div>
               </v-col>
               <v-col cols="6">
                 <div class="asset-info-box">
                   <div class="asset-info-title">Max Supply</div>
-                  <div class="asset-info-value">{{ asset.maxSupply }} {{ asset.symbol }}</div>
+                  <div class="asset-info-value">{{ asset.max_supply }} {{ asset.symbol }}</div>
                 </div>
               </v-col>
             </v-row>
@@ -140,7 +141,7 @@ const chartColor = computed(() => (asset.value && parseFloat(asset.value.changeP
               <v-btn v-for="option in timeOptions" :key="option.value" :value="option.value">{{ option.label }}</v-btn>
             </v-btn-toggle>
             <!-- <line-chart :data="chartData" :color="chartColor"/> -->
-            <line-chart-apex :data="chartData" :color="chartColor"/>
+            <line-chart-apex :data="chartData" :color="chartColor" />
           </v-card-text>
         </v-card>
       </v-col>

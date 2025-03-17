@@ -2,10 +2,10 @@
 import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
-import { useCoinCGeckoStore } from "@/stores/coiGeckoStore.js";
-import { formatCurrency, formatPercentage } from "../stores/helpers.js";
+import { useCoinGeckoStore } from "@/stores/coinGeckoStore.ts";
+import { formatCurrency, formatPercentage } from "@/utils/formatters.ts";
 
-const coinGeckoStore = useCoinCGeckoStore();
+const coinGeckoStore = useCoinGeckoStore();
 const {cryptocurrencies: assets} = storeToRefs(coinGeckoStore);
 const router = useRouter();
 const search = ref('');
