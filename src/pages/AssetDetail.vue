@@ -1,21 +1,102 @@
+<script setup>
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { timeOptions, useCoinCapStore } from '@/stores/coinCapStore.ts';
+// import LineChart from '../components/LineChart.vue';
+import LineChartApex from "@/components/LineChartApex.vue";
+import { storeToRefs } from "pinia";
+
+
+const coinCapStore = useCoinCapStore();
+const {fetchAssetById, fetchAssetHistory, formatCurrency, formatPercentage} = coinCapStore;
+const {timeOption} = storeToRefs(coinCapStore);
+const route = useRoute();
+const router = useRouter();
+const id = route.params.id;
+const loading = ref(true);
+
+
+const asset = computed(() => coinCapStore.assets.find((asset) => asset.id === id) || {});
+const history = computed(() => coinCapStore.history[id]?.[timeOption.value] || []);
+
+
+
+const loadAssetData = async () => {
+  try {
+    loading.value = true;
+    await fetchAssetById(id);
+    if (asset.value) {
+      await fetchAssetHistory(id, timeOption.value);
+    }
+  } catch (error) {
+    console.error('Failed to fetch asset details:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(loadAssetData);
+
+onMounted(() => {
+//   if asset is an empty object, redirect to home page
+  if (Object.keys(asset.value).length === 0) {
+    router.push('/');
+  }
+
+
+})
+
+
+watch([() => route.params.id, () => timeOption.value], loadAssetData);
+
+const chartData = computed(() =>
+    history.value.map((point) => ({
+      // time: new Date(point.time).toLocaleString(),
+      time: new Date(point.time),
+      price: parseFloat(point.priceUsd),
+    }))
+);
+
+const chartColor = computed(() => (asset.value && parseFloat(asset.value.changePercent24Hr) >= 0 ? '#00CC66' : '#FF3366'));
+</script>
 <template>
   <v-container>
     <v-row>
       <v-col cols="12">
         <v-card class="asset-detail-card">
-          <v-card-title>
-            <v-avatar class="rank-avatar">{{ asset.rank }}</v-avatar>
-            <div class="asset-header">
-              <div class="asset-name">{{ asset.name }}</div>
-              <div class="asset-symbol">{{ asset.symbol }}</div>
-            </div>
-            <div class="asset-price">
-              {{ formatCurrency(asset.priceUsd) }}
-              <div :class="{ 'positive-change': asset.changePercent24Hr > 0, 'negative-change': asset.changePercent24Hr < 0 }">
-                {{ formatPercentage(asset.changePercent24Hr) }}
-              </div>
-            </div>
+
+          <v-card-title class="asset-header">
+
+            <v-row>
+
+              <v-col cols="1">
+                <v-avatar :rounded="false" class="rank-avatar">{{ asset.rank }}</v-avatar>
+              </v-col>
+
+              <v-col cols="5">
+                <div class="asset-name"> {{ asset.name }}</div>
+                <div class="asset-symbol"> {{ asset.symbol }}</div>
+              </v-col>
+
+              <v-col cols="6">
+                <div class="asset-price">{{ formatCurrency(asset.priceUsd) }}</div>
+                <div class="asset-price-change"
+                     :class="{ 'positive-change': asset.changePercent24Hr > 0, 'negative-change': asset.changePercent24Hr < 0 }">
+                  {{ formatPercentage(asset.changePercent24Hr) }}
+                </div>
+              </v-col>
+
+            </v-row>
+
+            <v-divider style="border-width: 1px; opacity: 0.3;"/>
+
           </v-card-title>
+
+          <v-card-text>
+
+
+          </v-card-text>
+
           <v-card-text>
             <v-row>
               <v-col cols="6">
@@ -45,9 +126,11 @@
             </v-row>
             <v-btn class="explorer-btn" :href="asset.explorer" target="_blank">View Explorer</v-btn>
           </v-card-text>
+
         </v-card>
       </v-col>
     </v-row>
+
     <v-row>
       <v-col cols="12">
         <v-card class="chart-card">
@@ -56,7 +139,8 @@
             <v-btn-toggle v-model="timeOption" class="time-options">
               <v-btn v-for="option in timeOptions" :key="option.value" :value="option.value">{{ option.label }}</v-btn>
             </v-btn-toggle>
-            <line-chart :data="chartData" :color="chartColor" />
+            <!-- <line-chart :data="chartData" :color="chartColor"/> -->
+            <line-chart-apex :data="chartData" :color="chartColor"/>
           </v-card-text>
         </v-card>
       </v-col>
@@ -65,59 +149,6 @@
 
 
 </template>
-
-<script setup>
-import { ref, onMounted, watch, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useCoinCapStore } from '@/stores/coinCapApi';
-import LineChart from './LineChart.vue';
-
-const coinCapStore = useCoinCapStore();
-const { fetchAssetById, fetchAssetHistory, formatCurrency, formatPercentage } = coinCapStore;
-
-const route = useRoute();
-const router = useRouter();
-const id = route.params.id;
-const loading = ref(true);
-const timeOption = ref('m5');
-
-const timeOptions = [
-  { label: '1H', value: 'm1' },
-  { label: '1D', value: 'm5' },
-  { label: '1W', value: 'h1' },
-  { label: '1M', value: 'h12' },
-  { label: '1Y', value: 'd1' },
-];
-
-const asset = computed(()=>coinCapStore.assets?.[id] || {});
-const history = computed(() => coinCapStore.history[id]?.[timeOption.value] || []);
-
-const loadAssetData = async () => {
-  try {
-    loading.value = true;
-    await fetchAssetById(id);
-    if (asset.value) {
-      await fetchAssetHistory(id, timeOption.value);
-    }
-  } catch (error) {
-    console.error('Failed to fetch asset details:', error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-onMounted(loadAssetData);
-watch([() => route.params.id, () => timeOption.value], loadAssetData);
-
-const chartData = computed(() =>
-  history.value.map((point) => ({
-    time: new Date(point.time).toLocaleString(),
-    price: parseFloat(point.priceUsd),
-  }))
-);
-
-const chartColor = computed(() => (asset.value && parseFloat(asset.value.changePercent24Hr) >= 0 ? '#00CC66' : '#FF3366'));
-</script>
 
 <style scoped>
 .asset-detail-card {
@@ -150,6 +181,12 @@ const chartColor = computed(() => (asset.value && parseFloat(asset.value.changeP
 .asset-price {
   text-align: right;
   font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.asset-price-change {
+  text-align: right;
+  font-size: 1.1rem;
   font-weight: bold;
 }
 

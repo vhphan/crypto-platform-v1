@@ -1,18 +1,16 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useCoinCapStore } from '../stores/coinCapApi';
+import { useCoinCapStore } from '../stores/coinCapStore.ts';
 import { useRouter } from 'vue-router';
 
 const coinCapStore = useCoinCapStore();
-const { assets } = storeToRefs(coinCapStore);
-const { fetchAssets, formatCurrency, formatPercentage } = coinCapStore;
+const {assets} = storeToRefs(coinCapStore);
+const {fetchAssets, formatCurrency, formatPercentage} = coinCapStore;
 const router = useRouter();
 const search = ref('');
 
-onMounted(() => {
-  fetchAssets();
-});
+onMounted(fetchAssets);
 
 const goToAsset = (id) => {
   router.push(`/asset/${id}`);
@@ -20,8 +18,8 @@ const goToAsset = (id) => {
 
 const filteredAssets = computed(() => {
   return assets.value.filter((asset) =>
-    asset.name.toLowerCase().includes(search.value.toLowerCase()) ||
-    asset.symbol.toLowerCase().includes(search.value.toLowerCase())
+      asset.name.toLowerCase().includes(search.value.toLowerCase()) ||
+      asset.symbol.toLowerCase().includes(search.value.toLowerCase())
   );
 });
 </script>
@@ -29,10 +27,10 @@ const filteredAssets = computed(() => {
 <template>
   <v-container>
     <v-text-field
-      v-model="search"
-      label="Search for an asset"
-      prepend-icon="mdi-magnify"
-      class="mb-4"
+        v-model="search"
+        label="Search for an asset"
+        prepend-icon="mdi-magnify"
+        class="mb-4"
     ></v-text-field>
     <v-row>
       <v-col cols="12" md="6" lg="4" v-for="(asset, index) in filteredAssets" :key="asset.id">
@@ -49,7 +47,7 @@ const filteredAssets = computed(() => {
               <div class="asset-price col-6">
                 {{ formatCurrency(asset.priceUsd) }}
                 <div
-                  :class="{ 'positive-change': asset.changePercent24Hr > 0, 'negative-change': asset.changePercent24Hr < 0 }">
+                    :class="{ 'positive-change': asset.changePercent24Hr > 0, 'negative-change': asset.changePercent24Hr < 0 }">
                   {{ formatPercentage(asset.changePercent24Hr) }}
                 </div>
               </div>

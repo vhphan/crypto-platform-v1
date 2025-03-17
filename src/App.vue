@@ -3,21 +3,25 @@
     <v-app-bar app>
       <v-toolbar-title>My App</v-toolbar-title>
       <v-spacer></v-spacer>
-      <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">Home</router-link>
+      <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">Overview</router-link>
+      <router-link to="/multiple" class="nav-link" :class="{ active: $route.path === '/multiple' }">Multiple Charts</router-link>
       <router-link to="/about" class="nav-link" :class="{ active: $route.path === '/about' }">About</router-link>
     </v-app-bar>
     <v-main class="main-container">
-        <router-view></router-view>
+      <router-view></router-view>
     </v-main>
   </v-app>
 </template>
 
 <script setup>
-import { VApp, VAppBar, VToolbarTitle, VSpacer, VMain, VContainer } from 'vuetify/components'
+import { VApp, VAppBar, VToolbarTitle, VSpacer, VMain } from 'vuetify/components'
+import { ref, onMounted, watch } from 'vue';
+
+
 </script>
 
 <style scoped>
-@import './style.css';
+@import '@/style.css';
 
 /* Neo Brutalist style */
 .v-app-bar {
@@ -51,7 +55,8 @@ import { VApp, VAppBar, VToolbarTitle, VSpacer, VMain, VContainer } from 'vuetif
 }
 
 .main-container {
-  margin-top: 50px; /* Adjust this value if your app bar height is different */
+  margin-top: 50px;
+  /* Adjust this value if your app bar height is different */
 }
 
 .v-main {

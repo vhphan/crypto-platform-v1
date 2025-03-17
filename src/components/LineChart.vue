@@ -63,6 +63,6 @@ watch(() => props.data, createChart, { deep: true });
 <style scoped>
 canvas {
   width: 100%;
-  height: 400px;
+  max-height: min(50vh, 350px);
 }
 </style>

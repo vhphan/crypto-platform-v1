@@ -1,0 +1,13 @@
+###
+
+GET https://api.coingecko.com/api/v3/ping
+x-cg-demo-api-key: {{coinGeckoApiKey}}
+
+
+###
+GET https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=10&page=1
+
+
+### COIN DATA BY ID
+GET https://api.coingecko.com/api/v3/coins/ethereum
+
