@@ -1,7 +1,8 @@
 <script setup>
 import { useCoinGeckoStore, timeOptions } from "@/stores/coinGeckoStore";
 import { storeToRefs } from "pinia";
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import LWChart from "../components/LWChart.vue";
 
 const coinGeckoStore = useCoinGeckoStore();
 
@@ -10,7 +11,7 @@ const { historicalData, timeOption } = storeToRefs(coinGeckoStore);
 const assetsToDisplay = computed(() => {
   const assets = coinGeckoStore.cryptocurrencies.filter((asset) => asset.id);
   // limit to 6
-  return assets.slice(0, 2);
+  return assets.slice(0, 3);
 });
 
 const fetchRequiredAssetHistory = async () => {
@@ -38,63 +39,90 @@ const assetsHistory = computed(() => {
 
 })
 
-const chartOptions = computed(() => {
-  return assetsToDisplay.value.map((asset) => {
-    return {
-      id: asset.id,
-      group: 'synced',
-      type: 'line',
-      height: 300,
-      color: parseFloat(asset.changePercent24Hr) >= 0 ? "#00CC66" : "#FF3366",
-    };
-  });
-})
+// const chartOptions = computed(() => {
+//   return assetsToDisplay.value.map((asset) => {
+//     return {
+//       id: asset.id,
+//       group: 'synced',
+//       type: 'line',
+//       height: 300,
+//       color: parseFloat(asset.changePercent24Hr) >= 0 ? "#00CC66" : "#FF3366",
+//     };
+//   });
+// })
 
-const chartSeries = computed(() => {
-  return assetsHistory.value.map((asset) => {
-    console.log(asset);
-    const prices = asset.data['prices'] || [];
-    return {
-      name: asset.id,
-      data: prices.map((price) => {
-        return {
-          x: price[0],
-          y: parseFloat(price[1]).toFixed(2),
-        };
-      }),
-    };
-  });
-});
-
-
-const options = computed(() => {
-      return assetsHistory.value.map((asset) => {
-        return {
-          chart: { type: 'line', group: 'social', id: asset.id },
-          xaxis: { type: 'datetime', title: { text: 'Date' }, convertedCatToNumeric: false },
-          yaxis: { title: { text: 'Price (USD)' }, labels: {minWidth: 40} },
-          stroke: { width: 1, curve: 'straight' },
-          colors: ["#0754ef"],
-        //   yaxis.labels.minWidth
-
-        }
-      })
-    }
-)
+// const chartSeries = computed(() => {
+//   return assetsHistory.value.map((asset) => {
+//     console.log(asset);
+//     const prices = asset.data['prices'] || [];
+//     return {
+//       name: asset.id,
+//       data: prices.map((price) => {
+//         return {
+//           x: price[0],
+//           y: parseFloat(price[1]).toFixed(2),
+//         };
+//       }),
+//     };
+//   });
+// });
+//
+//
+// const options = computed(() => {
+//       return assetsHistory.value.map((asset) => {
+//         return {
+//           chart: { type: 'line', group: 'social', id: asset.id },
+//           xaxis: { type: 'datetime', title: { text: 'Date' }, convertedCatToNumeric: false },
+//           yaxis: { title: { text: 'Price (USD)' }, labels: {minWidth: 40} },
+//           stroke: { width: 1, curve: 'straight' },
+//           colors: ["#0754ef"],
+//         //   yaxis.labels.minWidth
+//
+//         }
+//       })
+//     }
+// )
 
 // uPlot
 
+const chartDataArray = computed(() => {
+  return assetsHistory.value.map((asset) => {
+    console.log(asset);
+    const prices = asset.data['prices'] || [];
+    return prices.map((price) => {
+      return {
+        time: price[0] / 1000,
+        value: parseFloat(price[1]),
+      }
+    })
+  });
+});
 
+const seriesOptions = ref({
+  color: 'rgb(45, 77, 205)',
+});
+
+const chartType = ref('line');
+
+// const lwChart = ref();
+const lwCharts = ref(assetsToDisplay.value.map(() => ref(null)));
 
 
 onMounted(async () => {
+  if (coinGeckoStore.cryptocurrencies.length === 0) {
+    await coinGeckoStore.fetchCryptoData();
+  }
   await fetchRequiredAssetHistory();
 });
+
+watch(()=>timeOption.value, async () => {
+  await fetchRequiredAssetHistory();
+})
 
 </script>
 
 <template>
-  <!--buttons to change time interval-->
+  <!--buttons to change time inteurval-->
   <div>
     <v-card>
       <v-card-title>Time Interval</v-card-title>
@@ -109,11 +137,14 @@ onMounted(async () => {
 
     <!--chart components-->
     <v-row>
-      <v-col v-for="(series, idx) in chartSeries" :key="series.id" cols="12" md="6">
-        <v-card>
-          <v-card-title>{{ assetsToDisplay.find((asset) => asset.id === series.name).name }}</v-card-title>
+      <v-col v-for="(chartData, idx) in chartDataArray" :key="assetsToDisplay[idx].id" cols="12" md="6">
+        <v-card variant="outlined">
+          <v-card-title style="background-color: darkblue; color: white;">{{ assetsToDisplay[idx].id}}</v-card-title>
           <v-card-item>
-            {{series}}
+            <!--            {{ chartData }}-->
+            <l-w-chart :data="chartData" :type="chartType" :seriesOptions="seriesOptions"
+                       :ref="lwCharts[idx]"
+            />
           </v-card-item>
         </v-card>
       </v-col>
