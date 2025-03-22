@@ -1,10 +1,11 @@
 <template>
   <v-app>
     <v-app-bar app>
-      <v-toolbar-title>My App</v-toolbar-title>
+      <v-toolbar-title>Crypto Tracker</v-toolbar-title>
       <v-spacer></v-spacer>
       <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">Overview</router-link>
       <router-link to="/multiple" class="nav-link" :class="{ active: $route.path === '/multiple' }">Multiple Charts</router-link>
+      <router-link to="/example" class="nav-link" :class="{ active: $route.path === '/example' }">Example</router-link>
       <router-link to="/about" class="nav-link" :class="{ active: $route.path === '/about' }">About</router-link>
     </v-app-bar>
     <v-main class="main-container">
