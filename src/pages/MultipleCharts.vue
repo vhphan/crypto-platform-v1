@@ -3,6 +3,7 @@ import { useCoinGeckoStore, timeOptions } from "@/stores/coinGeckoStore";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import LWChart from "../components/LWChart.vue";
+import { syncTVCharts } from "../utils/helpers.js";
 
 const coinGeckoStore = useCoinGeckoStore();
 
@@ -105,7 +106,31 @@ const seriesOptions = ref({
 const chartType = ref('line');
 
 // const lwChart = ref();
-const lwCharts = ref(assetsToDisplay.value.map(() => ref(null)));
+const lwCharts = ref(Array(3).fill(null));
+
+const numOfChartsRendered = computed(() => {
+  return lwCharts.value.filter((chart) => chart !== undefined && chart?.isChartRendered && chart.isChartRendered).length;
+});
+
+
+const syncAllCharts = () => {
+  const lastChartIndex = lwCharts.value.length - 1;
+  lwCharts.value.forEach((chartRef, idx) => {
+    console.log(`syncing chart ${idx}`);
+    if (idx === lastChartIndex) {
+      syncTVCharts(lwCharts.value[idx].getChart(), lwCharts.value[0].getChart());
+      return;
+    }
+    syncTVCharts(lwCharts.value[idx].getChart(), lwCharts.value[idx + 1].getChart())
+  });
+};
+
+watch(() => numOfChartsRendered.value, () => {
+  console.log('numOfChartsRendered', numOfChartsRendered.value);
+  if (numOfChartsRendered.value === lwCharts.value.length) {
+    syncAllCharts();
+  }
+}, { immediate: true })
 
 
 onMounted(async () => {
@@ -113,9 +138,10 @@ onMounted(async () => {
     await coinGeckoStore.fetchCryptoData();
   }
   await fetchRequiredAssetHistory();
+
 });
 
-watch(()=>timeOption.value, async () => {
+watch(() => timeOption.value, async () => {
   await fetchRequiredAssetHistory();
 })
 
@@ -139,11 +165,11 @@ watch(()=>timeOption.value, async () => {
     <v-row>
       <v-col v-for="(chartData, idx) in chartDataArray" :key="assetsToDisplay[idx].id" cols="12" md="6">
         <v-card variant="outlined">
-          <v-card-title style="background-color: darkblue; color: white;">{{ assetsToDisplay[idx].id}}</v-card-title>
+          <v-card-title style="background-color: darkblue; color: white;">{{ assetsToDisplay[idx].id }}</v-card-title>
           <v-card-item>
             <!--            {{ chartData }}-->
             <l-w-chart :data="chartData" :type="chartType" :seriesOptions="seriesOptions"
-                       :ref="lwCharts[idx]"
+                       :ref="(el)=>{lwCharts[idx] = el}"/>
             />
           </v-card-item>
         </v-card>
