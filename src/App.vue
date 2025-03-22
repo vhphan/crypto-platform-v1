@@ -15,8 +15,9 @@
 
 <script setup>
 import { VApp, VAppBar, VToolbarTitle, VSpacer, VMain } from 'vuetify/components'
-import { ref, onMounted, watch } from 'vue';
 
+const USE_OWN_BACKEND = import.meta.env.VITE_USE_OWN_BACKEND === 'true';
+console.log('USE_OWN_BACKEND', USE_OWN_BACKEND);
 
 </script>
 

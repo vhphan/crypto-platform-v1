@@ -7,12 +7,8 @@ GET http://localhost:3000/
 ###
 GET https://rest.coincap.io/v3/assets?limit=10&apiKey={{apiKey}}
 
-
-
 ###
 GET https://api.coincap.io/v2/assets?limit=20
-
-
 
 ###
 GET http://localhost:3000/api/coin-cap/assets?limit=10
