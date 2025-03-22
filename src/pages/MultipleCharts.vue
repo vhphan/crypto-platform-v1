@@ -1,28 +1,41 @@
 <script setup>
-import { useCoinCapStore, timeOptions } from "@/stores/coinCapStore.js";
+import { useCoinGeckoStore, timeOptions } from "@/stores/coinGeckoStore";
 import { storeToRefs } from "pinia";
 import { computed, onMounted } from "vue";
 
-const coinCapStore = useCoinCapStore();
+const coinGeckoStore = useCoinGeckoStore();
 
-const { history, assetsToDisplay, timeOption } = storeToRefs(coinCapStore);
+const { historicalData, timeOption } = storeToRefs(coinGeckoStore);
+
+const assetsToDisplay = computed(() => {
+  const assets = coinGeckoStore.cryptocurrencies.filter((asset) => asset.id);
+  // limit to 6
+  return assets.slice(0, 2);
+});
 
 const fetchRequiredAssetHistory = async () => {
-  debugger;
-  await Promise.all(assetsToDisplay.value.map((asset) => {
-    return coinCapStore.fetchAssetHistory(asset.id, timeOption.value);
-  }));
+  // await Promise.all(assetsToDisplay.value.map((asset) => {
+  //   return coinGeckoStore.fetchHistoricalData(asset.id);
+  // }));
+
+  // fetch one by one
+  for (const asset of assetsToDisplay.value) {
+    await coinGeckoStore.fetchHistoricalData(asset.id);
+    // wait 300ms
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+
 };
 
-const assetsHistory = computed(()=>{
+const assetsHistory = computed(() => {
 
   return assetsToDisplay.value.map((asset) => {
     return {
       id: asset.id,
-      data: history.value[asset.id]?.[timeOption.value] || [],
+      data: historicalData.value[asset.id]?.[timeOption.value] || [],
     };
   });
-  
+
 })
 
 const chartOptions = computed(() => {
@@ -40,23 +53,42 @@ const chartOptions = computed(() => {
 const chartSeries = computed(() => {
   return assetsHistory.value.map((asset) => {
     console.log(asset);
-    debugger;
-    
+    const prices = asset.data['prices'] || [];
     return {
-      id: asset.id,
-      data: asset.data.map((point) => {
-        const pointForTimeInterval = point[timeOption]?.value;
+      name: asset.id,
+      data: prices.map((price) => {
         return {
-          x: new Date(pointForTimeInterval.time).getTime(),
-          y: parseFloat(pointForTimeInterval.priceUsd),
+          x: price[0],
+          y: parseFloat(price[1]).toFixed(2),
         };
       }),
     };
   });
 });
 
-onMounted(() => {
-  fetchRequiredAssetHistory().then(()=>{});
+
+const options = computed(() => {
+      return assetsHistory.value.map((asset) => {
+        return {
+          chart: { type: 'line', group: 'social', id: asset.id },
+          xaxis: { type: 'datetime', title: { text: 'Date' }, convertedCatToNumeric: false },
+          yaxis: { title: { text: 'Price (USD)' }, labels: {minWidth: 40} },
+          stroke: { width: 1, curve: 'straight' },
+          colors: ["#0754ef"],
+        //   yaxis.labels.minWidth
+
+        }
+      })
+    }
+)
+
+// uPlot
+
+
+
+
+onMounted(async () => {
+  await fetchRequiredAssetHistory();
 });
 
 </script>
@@ -77,12 +109,11 @@ onMounted(() => {
 
     <!--chart components-->
     <v-row>
-      <v-col v-for="(series, idx) in chartSeries" :key="series.id" cols="12" md="4">
+      <v-col v-for="(series, idx) in chartSeries" :key="series.id" cols="12" md="6">
         <v-card>
-          <v-card-title>{{assetsToDisplay.find((asset) => asset.id === series.id).name}}</v-card-title>
+          <v-card-title>{{ assetsToDisplay.find((asset) => asset.id === series.name).name }}</v-card-title>
           <v-card-item>
-            {{ series }}
-            <!-- <apexchart type="line" height="160" :options="chartOptions[idx]" :series="series"></apexchart> -->
+            {{series}}
           </v-card-item>
         </v-card>
       </v-col>
